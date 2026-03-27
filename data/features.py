@@ -61,6 +61,11 @@ def engineer_features(df: pd.DataFrame, include_target: bool = False) -> pd.Data
     df["obv"] = ta.volume.on_balance_volume(df["close"], df["volume"])
     df["volume_sma_20"] = df["volume"].rolling(window=20).mean()
     df["volume_ratio"] = df["volume"] / df["volume_sma_20"]
+    # Forex pairs (e.g. GBPUSD=X) report zero volume — avoid 0/0 NaN
+    if df["volume"].sum() == 0:
+        df["obv"] = 0.0
+        df["volume_sma_20"] = 0.0
+        df["volume_ratio"] = 1.0
 
     # ─── Price returns ───────────────────────────────────────
     df["returns_1"] = df["close"].pct_change(1)
