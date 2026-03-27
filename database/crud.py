@@ -1,5 +1,6 @@
 """Database read/write helpers."""
 
+import logging
 from datetime import date, datetime
 from typing import Optional
 
@@ -13,6 +14,8 @@ from database.models import (
     TradeDecision,
     TradeOutcome,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Trade Decisions ─────────────────────────────────────────
@@ -168,3 +171,7 @@ def set_kill_switch(active: bool, reason: str = "") -> None:
         flag.activated_at = datetime.utcnow() if active else None
         flag.reason = reason
         session.commit()
+    if active:
+        logger.critical("KILL SWITCH SET ACTIVE in DB. Reason: %s", reason)
+    else:
+        logger.warning("Kill switch deactivated in DB.")

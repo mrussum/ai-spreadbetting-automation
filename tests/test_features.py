@@ -3,8 +3,9 @@
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
-from data.features import FEATURE_COLUMNS, engineer_features
+from data.features import FEATURE_COLUMNS, engineer_features, get_live_features
 
 
 def _make_ohlcv(n: int = 300) -> pd.DataFrame:
@@ -60,3 +61,55 @@ class TestEngineerFeatures:
         df = engineer_features(raw)
         assert len(df) < len(raw), "Should drop warm-up NaN rows"
         assert len(df) > 0
+
+    def test_does_not_mutate_input(self):
+        """engineer_features must not modify the caller's DataFrame."""
+        raw = _make_ohlcv()
+        original_cols = set(raw.columns)
+        engineer_features(raw)
+        assert set(raw.columns) == original_cols
+
+    def test_ema_200_requires_sufficient_rows(self):
+        """With only 50 rows the EMA-200 warm-up strips all rows — result is empty."""
+        raw = _make_ohlcv(n=50)
+        df = engineer_features(raw)
+        # After dropping NaNs from a 200-period indicator there should be nothing left
+        assert len(df) == 0
+
+    def test_target_binary_values(self):
+        """target_3 must be strictly 0 or 1."""
+        df = engineer_features(_make_ohlcv(400), include_target=True)
+        assert df["target_3"].isin([0, 1]).all()
+
+    def test_feature_columns_count(self):
+        """FEATURE_COLUMNS list length must remain stable."""
+        assert len(FEATURE_COLUMNS) == 21
+
+    def test_feature_columns_are_unique(self):
+        assert len(FEATURE_COLUMNS) == len(set(FEATURE_COLUMNS))
+
+    def test_bollinger_width_non_negative(self):
+        df = engineer_features(_make_ohlcv())
+        assert (df["bb_width"] >= 0).all()
+
+    def test_atr_non_negative(self):
+        df = engineer_features(_make_ohlcv())
+        assert (df["atr_14"] >= 0).all()
+
+
+class TestGetLiveFeatures:
+    def test_returns_series_with_all_feature_columns(self):
+        raw = _make_ohlcv(300)
+        with patch("data.features.fetch_latest_candles", return_value=raw):
+            series = get_live_features("^FTSE")
+        assert isinstance(series, pd.Series)
+        for col in FEATURE_COLUMNS:
+            assert col in series.index, f"Missing feature: {col}"
+
+    def test_raises_when_data_empty(self):
+        empty = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
+        with (
+            patch("data.features.fetch_latest_candles", return_value=empty),
+            pytest.raises(ValueError, match="No feature data"),
+        ):
+            get_live_features("^FTSE")

@@ -24,6 +24,8 @@ def engineer_features(df: pd.DataFrame, include_target: bool = False) -> pd.Data
     df = df.copy()
 
     # Ensure we have enough data
+    if df.empty:
+        return df
     if len(df) < 200:
         logger.warning("Only %d rows — some long-window indicators may be NaN", len(df))
 
