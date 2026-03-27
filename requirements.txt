@@ -3,7 +3,9 @@ python-dotenv==1.0.1
 requests==2.31.0
 
 # Data & ML
-yfinance==0.2.36
+yfinance==1.2.0
+curl_cffi>=0.7,<0.14
+websockets>=13.0
 pandas==2.2.0
 numpy==1.26.4
 scikit-learn==1.4.0
@@ -18,7 +20,7 @@ vectorbt==0.26.2
 anthropic==0.43.0
 
 # Broker streaming
-ls-client==1.0.2
+
 
 # Database
 sqlalchemy==2.0.25
